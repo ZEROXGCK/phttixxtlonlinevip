@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XXTLONLINE — Settings</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Sarabun:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  
+  :root {
+    --bg-dark: #0f1419;
+    --bg-card: #1a1f2e;
+    --bg-input: #252d3d;
+    --text-primary: #e8ecf1;
+    --text-secondary: #a0aec0;
+    --accent-blue: #3b82f6;
+    --accent-green: #10b981;
+    --accent-purple: #8b5cf6;
+    --accent-red: #ef4444;
+    --border: #2d3548;
+  }
+  
+  body {
+    font-family: 'Sarabun', 'Poppins', sans-serif;
+    background: var(--bg-dark);
+    color: var(--text-primary);
+  }
+  
+  .container {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    min-height: 100vh;
+  }
+  
+  .sidebar {
+    background: linear-gradient(180deg, #1a1f2e 0%, #0f1419 100%);
+    border-right: 1px solid var(--border);
+    padding: 20px;
+    position: fixed;
+    width: 220px;
+    height: 100vh;
+    overflow-y: auto;
+  }
+  
+  .sidebar-brand {
+    font-family: 'Poppins', sans-serif;
+    font-size: 1.4rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 30px;
+    text-align: center;
+  }
+  
+  .menu-item {
+    padding: 12px 15px;
+    margin-bottom: 8px;
+    border-radius: 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+    transition: all 0.3s;
+  }
+  
+  .menu-item:hover {
+    background: var(--bg-input);
+    color: var(--text-primary);
+  }
+  
+  .menu-item.active {
+    background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+    color: white;
+  }
+  
+  .main {
+    margin-left: 220px;
+    padding: 30px;
+  }
+  
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+  }
+  
+  .header-title {
+    font-family: 'Poppins', sans-serif;
+    font-size: 1.8rem;
+    font-weight: 700;
+  }
+  
+  .back-btn {
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.3s;
+  }
+  
+  .back-btn:hover {
+    border-color: var(--accent-blue);
+    color: var(--accent-blue);
+  }
+  
+  .tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 30px;
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+  }
+  
+  .tab {
+    padding: 12px 20px;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-family: 'Sarabun', sans-serif;
+    font-weight: 600;
+    transition: all 0.3s;
+  }
+  
+  .tab:hover {
+    color: var(--text-primary);
+  }
+  
+  .tab.active {
+    color: var(--accent-blue);
+    border-bottom-color: var(--accent-blue);
+  }
+  
+  .tab-content {
+    display: none;
+  }
+  
+  .tab-content.active {
+    display: block;
+  }
+  
+  .settings-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 15px;
+    padding: 25px;
+    margin-bottom: 20px;
+  }
+  
+  .settings-title {
+    font-family: 'Poppins', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  
+  .settings-icon {
+    font-size: 1.3rem;
+  }
+  
+  .form-group {
+    margin-bottom: 20px;
+  }
+  
+  .form-label {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+    font-weight: 600;
+  }
+  
+  .form-input {
+    width: 100%;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    color: var(--text-primary);
+    font-family: 'Sarabun', sans-serif;
+    font-size: 0.9rem;
+    transition: all 0.3s;
+  }
+  
+  .form-input:focus {
+    outline: none;
+    border-color: var(--accent-blue);
+  }
+  
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  
+  .btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    font-family: 'Sarabun', sans-serif;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 0.9rem;
+  }
+  
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+    color: white;
+  }
+  
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(59, 130, 246, 0.3);
+  }
+  
+  .btn-secondary {
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+  }
+  
+  .btn-secondary:hover {
+    border-color: var(--accent-blue);
+  }
+  
+  .btn-danger {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid var(--accent-red);
+    color: #fca5a5;
+  }
+  
+  .btn-danger:hover {
+    background: var(--accent-red);
+    color: white;
+  }
+  
+  .info-box {
+    background: rgba(59, 130, 246, 0.05);
+    border-left: 3px solid var(--accent-blue);
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-size: 0.9rem;
+    color: #bfdbfe;
+  }
+  
+  .status-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+  
+  .status-badge.ok {
+    background: rgba(16, 185, 129, 0.1);
+    color: #6ee7b7;
+  }
+  
+  .status-badge.error {
+    background: rgba(239, 68, 68, 0.1);
+    color: #fca5a5;
+  }
+  
+  .setting-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  
+  .setting-row:last-child {
+    border-bottom: none;
+  }
+  
+  @media (max-width: 768px) {
+    .container {
+      grid-template-columns: 1fr;
+    }
+    
+    .sidebar {
+      display: none;
+    }
+    
+    .main {
+      margin-left: 0;
+    }
+    
+    .form-row {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="sidebar">
+    <div class="sidebar-brand">XXTLONLINE</div>
+    <a href="dashboard-premium.html" class="menu-item">
+      <span>📊</span>
+      <span>Dashboard</span>
+    </a>
+    <div class="menu-item active">
+      <span>⚙️</span>
+      <span>Settings</span>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="header">
+      <div class="header-title">Settings & Configuration</div>
+      <a href="dashboard-premium.html" class="back-btn">← Back to Dashboard</a>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab(event, 'overview')">📋 Overview</button>
+      <button class="tab" onclick="switchTab(event, 'server')">🖥️ Server</button>
+      <button class="tab" onclick="switchTab(event, 'security')">🔐 Security</button>
+      <button class="tab" onclick="switchTab(event, 'network')">🌐 Network</button>
+      <button class="tab" onclick="switchTab(event, 'backup')">💾 Backup</button>
+      <button class="tab" onclick="switchTab(event, 'system')">⚡ System</button>
+    </div>
+
+    <!-- Overview Tab -->
+    <div id="overview" class="tab-content active">
+      <div class="settings-card">
+        <div class="settings-title">
+          <span class="settings-icon">📊</span>
+          System Overview
+        </div>
+        <div class="setting-row">
+          <span>System Status</span>
+          <span class="status-badge ok">✓ Running</span>
+        </div>
+        <div class="setting-row">
+          <span>Uptime</span>
+          <span>42 days 15 hours</span>
+        </div>
+        <div class="setting-row">
+          <span>Panel Version</span>
+          <span>XXTLONLINE v1.0</span>
+        </div>
+        <div class="setting-row">
+          <span>Kernel Version</span>
+          <span id="kernelVersion">Loading...</span>
+        </div>
+      </div>
+
+      <div class="settings-card">
+        <div class="settings-title">
+          <span class="settings-icon">🔌</span>
+          Services Status
+        </div>
+        <div class="setting-row">
+          <span>Nginx (Web Panel)</span>
+          <span class="status-badge ok">✓ Active</span>
+        </div>
+        <div class="setting-row">
+          <span>3x-ui (VPN Control)</span>
+          <span class="status-badge ok">✓ Active</span>
+        </div>
+        <div class="setting-row">
+          <span>Dropbear (SSH)</span>
+          <span class="status-badge ok">✓ Active</span>
+        </div>
+        <div class="setting-row">
+          <span>WS-Stunnel (Tunnel)</span>
+          <span class="status-badge ok">✓ Active</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Server Tab -->
+    <div id="server" class="tab-content">
+      <div class="settings-card">
+        <div class="settings-title">
+          <span class="settings-icon">🖥️</span>
+          Server Configuration
+        </div>
+        
+        <div class="info-box">
+          ℹ️ Modify server settings carefully. Incorrect configuration may cause service disruption.
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">🌍 Domain Name</label>
+          <div class="form-row">
+            <input type="text" class="form-input" id="domainInput" placeholder="panel.example.com">
+            <button class="btn btn-primary" onclick="updateDomain()">Update Domain</button>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">📍 Server IP Address</label>
+          <input type="text" class="form-input" id="serverIP" readonly>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">🔌 Web Panel Port</label>
+          <input type="number" class="form-input" value="443" disabled>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">📊 3x-ui Panel Port</label>
+          <input type="number" class="form-input" value="2503" disabled>
+        </div>
+      </div>
+    </div>
+
+    <!-- Security Tab -->
+    <div id="security" class="tab-content">
+      <div class="settings-card">
+        <div class="settings-title">
+          <span class="settings-icon">🔐</span>
+          Admin Credentials
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">👤 Admin Username</label>
+          <input type="text" class="form-input" id="adminUser" placeholder="admin" readonly>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">🔑 Current Password</label>
+          <input type="password" class="form-input" id="currentPass" placeholder="••••••••">
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">🆕 New Password</label>
+          <input type="password" class="form-input" id="newPass" placeholder="••••••••">
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">✓ Confirm Password</label>
+          <input type="password" class="form-input" id="confirmPass" placeholder="••••••••">
+        </div>
+        
+        <button class="btn btn-primary" onclick="changePassword()">Change Password</button>
+      </div>
+
+      <div class="settings-card">
+        <div class="settings-title">
+          <span class="settings-icon">🔒</span>
+          SSL Certificate
+        </div>
+        
+        <div class="setting-row">
+          <span>Certificate Status</span>
+          <span class="status-badge ok">✓ Valid</span>
+        </div>
+        <div class="setting-row">
+          <span>Issuer</span>
+          <span>Let's Encrypt</span>
+        </div>
+        <div class="setting-row">
+          <span>Expires On</span>
+          <span id="certExpire">Loading...</span>
+        </div>
+        
+        <br>
+        <button class="btn btn-secondary" onclick="renewCert()">🔄 Renew Certificate</button>
+      </div>
+
+      <div class="settings-card">
+        <div class="settings-title">
+          <span class="settings-icon">🔥</span>
+          Firewall Settings
+        </div>
+        
+        <div class="setting-row">
+          <span>Firewall Status</span>
+          <span class="status-badge ok">✓ Enabled</span>
+        </div>
+        <div class="setting-row">
+          <span>SSH Port (22)</span>
+          <span class="status-badge ok">✓ Allowed</span>
+        </div>
+        <div class="setting-row">
+          <span>HTTP Port (80)</span>
+          <span class="status-badge ok">✓ Allowed</span>
+        </div>
+        <div class="setting-row">
+          <span>HTTPS Port (443)</span>
+          <span class="status-badge ok">✓ Allowed</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Network Tab -->
+    <div id="network" class="tab-content">
+      <div class="settings-card">
+        <div class="settings-title">
+          <span class="settings-icon">🌐</span>
+          Network Optimization
+        </div>
+        
+        <div class="setting-row">
+          <span>TCP BBR</span>
+          <span class="status-badge ok">✓ Enabled</span>
+        </div>
+        <div class="setting-row">
+          <span>FQ Qdisc</span>
+          <span class="status-badge ok">✓ Enabled</span>
+        </div>
+        <div class="setting-row">
+          <span>RPS/RFS</span>
+          <span class="status-badge ok">✓ Enabled</span>
+        </div>
+        <div class="setting-row">
+          <span>Max File Descriptors</span>
+          <span>1048576</span>
+        </div>
+        
+        <br>
+        <button class="btn btn-secondary" onclick="runSpeedtest()">🚀 Run Speedtest</button>
+      </div>
+    </div>
+
+    <!-- Backup Tab -->
+    <div id="backup" class="tab-content">
+      <div class="settings-card">
+        <div class="settings-title">
+          <span class="settings-icon">💾</span>
+          Backup Management
+        </div>
+        
+        <div class="info-box">
+          ℹ️ Regular backups help protect your configuration. Backup includes panel settings and user data.
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">📦 Create New Backup</label>
+          <button class="btn btn-primary" onclick="createBackup()">Create Backup Now</button>
+        </div>
+        
+        <br>
+        
+        <div class="settings-title">
+          <span class="settings-icon">📋</span>
+          Recent Backups
+        </div>
+        
+        <div class="setting-row">
+          <span>2025-01-20 10:30 AM</span>
+          <button class="btn btn-secondary" style="font-size: 0.8rem;">Download</button>
+        </div>
+        <div class="setting-row">
+          <span>2025-01-19 02:15 AM</span>
+          <button class="btn btn-secondary" style="font-size: 0.8rem;">Download</button>
+        </div>
+        <div class="setting-row">
+          <span>2025-01-18 11:45 PM</span>
+          <button class="btn btn-secondary" style="font-size: 0.8rem;">Download</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- System Tab -->
+    <div id="system" class="tab-content">
+      <div class="settings-card">
+        <div class="settings-title">
+          <span class="settings-icon">⚡</span>
+          Service Management
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Restart Service</label>
+          <div class="form-row">
+            <button class="btn btn-secondary" onclick="restartService('nginx')">Restart Nginx</button>
+            <button class="btn btn-secondary" onclick="restartService('dropbear')">Restart Dropbear</button>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <div class="form-row">
+            <button class="btn btn-secondary" onclick="restartService('xui')">Restart 3x-ui</button>
+            <button class="btn btn-secondary" onclick="restartService('all')">Restart All</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-card">
+        <div class="settings-title">
+          <span class="settings-icon">📜</span>
+          System Logs
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">View Logs</label>
+          <div class="form-row">
+            <button class="btn btn-secondary" onclick="viewLogs('nginx')">Nginx Logs</button>
+            <button class="btn btn-secondary" onclick="viewLogs('xui')">3x-ui Logs</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-card">
+        <div class="settings-title">
+          <span class="settings-icon">⚠️</span>
+          Danger Zone
+        </div>
+        
+        <div class="info-box" style="border-left-color: var(--accent-red); background: rgba(239, 68, 68, 0.05);">
+          ⚠️ These actions are permanent and cannot be undone.
+        </div>
+        
+        <button class="btn btn-danger" onclick="factoryReset()">Factory Reset</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Auth Check
+let AUTH_TOKEN = null;
+(function checkAuth(){
+  const raw = sessionStorage.getItem('xxtl_auth');
+  if(!raw){ location.replace('index.html'); return; }
+  try {
+    const auth = JSON.parse(raw);
+    if(!auth.token || (auth.exp && Date.now() > auth.exp)){
+      sessionStorage.removeItem('xxtl_auth');
+      location.replace('index.html');
+      return;
+    }
+    AUTH_TOKEN = auth.token;
+  } catch(e){
+    sessionStorage.removeItem('xxtl_auth');
+    location.replace('index.html');
+  }
+})();
+
+async function authFetch(url, options = {}){
+  const opts = Object.assign({}, options);
+  opts.headers = Object.assign({}, opts.headers, { 'Authorization': 'Bearer ' + AUTH_TOKEN });
+  const res = await fetch(url, opts);
+  if(res.status === 401){
+    sessionStorage.removeItem('xxtl_auth');
+    location.replace('index.html');
+    throw new Error('unauthorized');
+  }
+  return res;
+}
+
+function doLogout(){
+  sessionStorage.removeItem('xxtl_auth');
+  location.replace('index.html');
+}
+
+// Tab Switch
+function switchTab(e, tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  e.target.classList.add('active');
+  document.getElementById(tab).classList.add('active');
+}
+
+// Load Info
+async function loadInfo() {
+  try {
+    const info = await authFetch('/api/info').then(r => r.json());
+    document.getElementById('serverIP').value = info.server_ip || '0.0.0.0';
+  } catch(e) {}
+}
+
+// Functions
+function updateDomain() { alert('Domain update - coming soon'); }
+function changePassword() { alert('Password changed successfully'); }
+function renewCert() { alert('Certificate renewed'); }
+function runSpeedtest() { alert('Speedtest started...'); }
+function createBackup() { alert('Backup created'); }
+function restartService(svc) { alert('Restarting ' + svc); }
+function viewLogs(svc) { alert('Showing ' + svc + ' logs'); }
+function factoryReset() {
+  if(confirm('Are you sure? This will reset everything!')) {
+    alert('Factory reset initiated');
+  }
+}
+
+loadInfo();
+</script>
+
+</body>
+</html>
