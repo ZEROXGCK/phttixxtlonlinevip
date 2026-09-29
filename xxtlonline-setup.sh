@@ -169,10 +169,19 @@ XUI_PORT=8081
 XUI_WEBPATH="/xui/"
 
 if command -v x-ui > /dev/null 2>&1; then
-  x-ui setting -username "$ADMIN_USER" -password "$ADMIN_PASS" \
+  # ต้องเรียก binary จริงโดยตรง — คำสั่ง `x-ui` (/usr/bin/x-ui) เป็นแค่ shell menu
+  # ไม่รับ `setting -port ...` จึงไม่มีผลอะไร (เป็นสาเหตุที่ port ยังสุ่ม)
+  XUI_BIN=/usr/local/x-ui/x-ui
+  [[ -x "$XUI_BIN" ]] || XUI_BIN=$(command -v x-ui)
+  systemctl stop x-ui > /dev/null 2>&1
+  "$XUI_BIN" setting -username "$ADMIN_USER" -password "$ADMIN_PASS" \
     -port "$XUI_PORT" -webBasePath "$XUI_WEBPATH" > /tmp/xui-setting.log 2>&1
-  systemctl restart x-ui
-  sleep 2
+  systemctl start x-ui
+  sleep 3
+  # ตรวจว่าค่าถูกตั้งจริง ถ้าไม่ตรงให้เตือน
+  if ! "$XUI_BIN" setting -show true 2>/dev/null | grep -q "port: $XUI_PORT"; then
+    warn "x-ui ไม่รับค่า port $XUI_PORT — ดู: cat /tmp/xui-setting.log"
+  fi
   echo "$XUI_PORT" > /etc/$BRAND_DIR/xui-port.conf
   echo "$XUI_WEBPATH" > /etc/$BRAND_DIR/xui-path.conf
   if systemctl is-active --quiet x-ui; then
@@ -863,7 +872,7 @@ class Handler(BaseHTTPRequestHandler):
             return
 
         if self.path == '/api/xui/inbounds':
-            data, err = xui_request('GET', 'panel/api/inbounds/list')
+            data, err = xui_request('POST', 'xui/inbound/list')
             if err:
                 self._json(502, {'ok': False, 'error': err})
                 return
@@ -1246,7 +1255,7 @@ server {{
             self._json(400, {'ok': False, 'error': 'invalid inbound_id'})
             return
 
-        listing, err = xui_request('GET', 'panel/api/inbounds/list')
+        listing, err = xui_request('POST', 'xui/inbound/list')
         if err:
             self._json(502, {'ok': False, 'error': err})
             return
@@ -1282,8 +1291,14 @@ server {{
             client = {'id': client_uuid, 'flow': '', 'email': email, 'limitIp': 0,
                       'totalGB': total_bytes, 'expiryTime': expiry_ms, 'enable': True}
 
-        payload = {'id': inbound_id, 'settings': json.dumps({'clients': [client]})}
-        result, err = xui_request('POST', 'panel/api/inbounds/addClient', payload)
+        # x-ui 1.x ไม่มี addClient endpoint: เพิ่ม client ลงใน settings แล้ว update inbound ทั้งก้อน
+        try:
+            cur_settings = json.loads(inbound.get('settings') or '{}')
+        except Exception:
+            cur_settings = {}
+        cur_settings.setdefault('clients', []).append(client)
+        inbound['settings'] = json.dumps(cur_settings)
+        result, err = xui_request('POST', f'xui/inbound/update/{inbound_id}', inbound)
         if err:
             self._json(502, {'ok': False, 'error': err})
             return
@@ -1405,7 +1420,12 @@ server {{
             'sniffing': {'enabled': True, 'destOverride': ['http', 'tls']},
         }
 
-        result, err = xui_request('POST', 'panel/api/inbounds/add', payload)
+        # x-ui รับ settings/streamSettings/sniffing เป็น JSON string
+        for _k in ('settings', 'streamSettings', 'sniffing'):
+            if not isinstance(payload[_k], str):
+                payload[_k] = json.dumps(payload[_k])
+        payload.update({'up': 0, 'down': 0})
+        result, err = xui_request('POST', 'xui/inbound/add', payload)
         if err:
             self._json(502, {'ok': False, 'error': err})
             return
@@ -1445,7 +1465,7 @@ server {{
         except (TypeError, ValueError):
             self._json(400, {'ok': False, 'error': 'invalid inbound id'})
             return
-        result, err = xui_request('POST', f'panel/api/inbounds/del/{inbound_id}')
+        result, err = xui_request('POST', f'xui/inbound/del/{inbound_id}')
         if err:
             self._json(502, {'ok': False, 'error': err})
             return

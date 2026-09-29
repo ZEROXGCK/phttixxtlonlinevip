@@ -50,7 +50,7 @@ _xui_disc = {'t': 0.0}
 
 def _xui_cli(args):
     """Run the x-ui CLI; returns stdout or '' if the binary is missing/fails."""
-    for exe in ('x-ui', '/usr/local/x-ui/x-ui'):
+    for exe in ('/usr/local/x-ui/x-ui', 'x-ui'):
         try:
             r = run([exe] + args, timeout=20)
             if r.returncode == 0 and r.stdout:
@@ -505,7 +505,7 @@ class Handler(BaseHTTPRequestHandler):
             return
 
         if self.path == '/api/xui/inbounds':
-            data, err = xui_request('GET', 'panel/api/inbounds/list')
+            data, err = xui_request('POST', 'xui/inbound/list')
             if err:
                 self._json(502, {'ok': False, 'error': err})
                 return
@@ -888,7 +888,7 @@ server {{
             self._json(400, {'ok': False, 'error': 'invalid inbound_id'})
             return
 
-        listing, err = xui_request('GET', 'panel/api/inbounds/list')
+        listing, err = xui_request('POST', 'xui/inbound/list')
         if err:
             self._json(502, {'ok': False, 'error': err})
             return
@@ -924,8 +924,14 @@ server {{
             client = {'id': client_uuid, 'flow': '', 'email': email, 'limitIp': 0,
                       'totalGB': total_bytes, 'expiryTime': expiry_ms, 'enable': True}
 
-        payload = {'id': inbound_id, 'settings': json.dumps({'clients': [client]})}
-        result, err = xui_request('POST', 'panel/api/inbounds/addClient', payload)
+        # x-ui 1.x ไม่มี addClient endpoint: เพิ่ม client ลงใน settings แล้ว update inbound ทั้งก้อน
+        try:
+            cur_settings = json.loads(inbound.get('settings') or '{}')
+        except Exception:
+            cur_settings = {}
+        cur_settings.setdefault('clients', []).append(client)
+        inbound['settings'] = json.dumps(cur_settings)
+        result, err = xui_request('POST', f'xui/inbound/update/{inbound_id}', inbound)
         if err:
             self._json(502, {'ok': False, 'error': err})
             return
@@ -1047,7 +1053,12 @@ server {{
             'sniffing': {'enabled': True, 'destOverride': ['http', 'tls']},
         }
 
-        result, err = xui_request('POST', 'panel/api/inbounds/add', payload)
+        # x-ui รับ settings/streamSettings/sniffing เป็น JSON string
+        for _k in ('settings', 'streamSettings', 'sniffing'):
+            if not isinstance(payload[_k], str):
+                payload[_k] = json.dumps(payload[_k])
+        payload.update({'up': 0, 'down': 0})
+        result, err = xui_request('POST', 'xui/inbound/add', payload)
         if err:
             self._json(502, {'ok': False, 'error': err})
             return
@@ -1087,7 +1098,7 @@ server {{
         except (TypeError, ValueError):
             self._json(400, {'ok': False, 'error': 'invalid inbound id'})
             return
-        result, err = xui_request('POST', f'panel/api/inbounds/del/{inbound_id}')
+        result, err = xui_request('POST', f'xui/inbound/del/{inbound_id}')
         if err:
             self._json(502, {'ok': False, 'error': err})
             return
