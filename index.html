@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XXTLONLINE — Login</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800&family=Sarabun:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  
+  :root {
+    --bg-dark: #0f1419;
+    --bg-card: #1a1f2e;
+    --bg-input: #252d3d;
+    --text-primary: #e8ecf1;
+    --text-secondary: #a0aec0;
+    --accent-blue: #3b82f6;
+    --accent-purple: #8b5cf6;
+    --border: #2d3548;
+  }
+  
+  body {
+    font-family: 'Sarabun', 'Poppins', sans-serif;
+    background: linear-gradient(135deg, var(--bg-dark) 0%, #1a1f2e 100%);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-primary);
+  }
+  
+  .stars {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+  
+  .star {
+    position: absolute;
+    width: 2px;
+    height: 2px;
+    background: #fff;
+    border-radius: 50%;
+    animation: twinkle 3s infinite;
+  }
+  
+  @keyframes twinkle {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 1; }
+  }
+  
+  .login-wrapper {
+    position: relative;
+    z-index: 10;
+  }
+  
+  .login-card {
+    background: linear-gradient(135deg, rgba(26, 31, 46, 0.8), rgba(37, 45, 61, 0.6));
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 50px;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+  }
+  
+  .login-header {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+  
+  .brand-logo {
+    font-family: 'Poppins', sans-serif;
+    font-size: 2.5rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 10px;
+  }
+  
+  .brand-subtitle {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    letter-spacing: 2px;
+  }
+  
+  .form-group {
+    margin-bottom: 20px;
+  }
+  
+  .form-label {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  
+  .form-input {
+    width: 100%;
+    background: var(--bg-input);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 16px;
+    font-family: 'Sarabun', sans-serif;
+    font-size: 0.95rem;
+    color: var(--text-primary);
+    transition: all 0.3s;
+  }
+  
+  .form-input:focus {
+    outline: none;
+    border-color: var(--accent-blue);
+    background: rgba(59, 130, 246, 0.05);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+  
+  .form-input::placeholder {
+    color: var(--text-secondary);
+  }
+  
+  .login-btn {
+    width: 100%;
+    background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+    border: none;
+    color: #fff;
+    font-size: 0.95rem;
+    font-weight: 600;
+    padding: 12px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-family: 'Sarabun', sans-serif;
+    margin-top: 10px;
+    transition: all 0.3s;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .login-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(59, 130, 246, 0.3);
+  }
+  
+  .login-btn:active {
+    transform: translateY(0);
+  }
+  
+  .login-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  
+  .error-msg {
+    display: none;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid #ef4444;
+    color: #fca5a5;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    margin-bottom: 20px;
+  }
+  
+  .error-msg.show {
+    display: block;
+  }
+  
+  .remember-me {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: 20px;
+  }
+  
+  .remember-me input {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: var(--accent-blue);
+  }
+  
+  .login-footer {
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+  }
+</style>
+</head>
+<body>
+
+<div class="stars" id="starsContainer"></div>
+
+<div class="login-wrapper">
+  <div class="login-card">
+    <div class="login-header">
+      <div class="brand-logo">XXTLONLINE</div>
+      <div class="brand-subtitle">VPN CONTROL PANEL</div>
+    </div>
+    
+    <div class="error-msg" id="errorMsg"></div>
+    
+    <form onsubmit="handleLogin(event)">
+      <div class="form-group">
+        <label class="form-label">👤 Username</label>
+        <input 
+          type="text" 
+          class="form-input" 
+          id="username" 
+          placeholder="admin"
+          autocomplete="off"
+        >
+      </div>
+      
+      <div class="form-group">
+        <label class="form-label">🔐 Password</label>
+        <input 
+          type="password" 
+          class="form-input" 
+          id="password" 
+          placeholder="Enter your password"
+          autocomplete="off"
+        >
+      </div>
+      
+      <div class="remember-me">
+        <input type="checkbox" id="rememberMe">
+        <label for="rememberMe">Remember me</label>
+      </div>
+      
+      <button type="submit" class="login-btn" id="loginBtn">
+        Login to Dashboard
+      </button>
+    </form>
+    
+    <div class="login-footer">
+      Secure Admin Portal • All access logged
+    </div>
+  </div>
+</div>
+
+<script>
+  // Generate stars
+  function generateStars() {
+    const container = document.getElementById('starsContainer');
+    const starCount = 50;
+    for(let i = 0; i < starCount; i++) {
+      const star = document.createElement('div');
+      star.className = 'star';
+      star.style.left = Math.random() * 100 + '%';
+      star.style.top = Math.random() * 100 + '%';
+      star.style.animationDelay = Math.random() * 3 + 's';
+      container.appendChild(star);
+    }
+  }
+  
+  // Login Handler
+  async function handleLogin(e) {
+    e.preventDefault();
+    
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value.trim();
+    const errorMsg = document.getElementById('errorMsg');
+    const loginBtn = document.getElementById('loginBtn');
+    
+    if(!username || !password) {
+      showError('กรุณากรอก Username และ Password');
+      return;
+    }
+    
+    loginBtn.disabled = true;
+    loginBtn.textContent = 'Logging in...';
+    errorMsg.classList.remove('show');
+    
+    try {
+      const response = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      
+      const data = await response.json();
+      
+      if(data.ok && data.token) {
+        sessionStorage.setItem('xxtl_auth', JSON.stringify({
+          user: username,
+          token: data.token,
+          exp: Date.now() + (data.expires_in ? data.expires_in * 1000 : 8 * 3600 * 1000)
+        }));
+        window.location.href = 'dashboard.html';
+      } else if(response.status === 429) {
+        showError('ลองรหัสผ่านผิดหลายครั้งเกินไป กรุณารอสักครู่แล้วลองใหม่');
+      } else {
+        showError('Username หรือ Password ไม่ถูกต้อง');
+      }
+    } catch(err) {
+      showError('เกิดข้อผิดพลาด: ' + err.message);
+    } finally {
+      loginBtn.disabled = false;
+      loginBtn.textContent = 'Login to Dashboard';
+    }
+  }
+  
+  function showError(message) {
+    const errorMsg = document.getElementById('errorMsg');
+    errorMsg.textContent = message;
+    errorMsg.classList.add('show');
+  }
+  
+  // Init
+  generateStars();
+  
+  // Enter to login
+  document.addEventListener('keypress', (e) => {
+    if(e.key === 'Enter') {
+      document.querySelector('form').dispatchEvent(new Event('submit'));
+    }
+  });
+</script>
+
+</body>
+</html>
