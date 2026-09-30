@@ -236,7 +236,7 @@ ok "Port 80/443 ว่างพร้อมใช้งาน"
 
 info "เปิด Firewall (ต้องเปิดก่อนขอ SSL ไม่งั้น Let's Encrypt เข้าไม่ถึง)..."
 ufw --force enable > /dev/null 2>&1
-for port in 22 80 109 143 8443 8081 8080 8880; do
+for port in 22 80 109 143 8443 8081 8080 8880 2086; do
   ufw allow $port/tcp > /dev/null 2>&1
 done
 ok "Firewall เปิด port ที่จำเป็นแล้ว"
@@ -550,7 +550,7 @@ _xui_disc = {'t': 0.0}
 
 def _xui_cli(args):
     """Run the x-ui CLI; returns stdout or '' if the binary is missing/fails."""
-    for exe in ('x-ui', '/usr/local/x-ui/x-ui'):
+    for exe in ('/usr/local/x-ui/x-ui', 'x-ui'):
         try:
             r = run([exe] + args, timeout=20)
             if r.returncode == 0 and r.stdout:
@@ -1031,9 +1031,23 @@ class Handler(BaseHTTPRequestHandler):
 
     # ---------------------------------------------------------------- GET
     def do_GET(self):
-        protected = ('/api/status', '/api/info', '/api/users', '/api/xui/inbounds', '/api/xui/config', '/api/profiles')
+        protected = ('/api/status', '/api/info', '/api/users', '/api/xui/inbounds', '/api/xui/config',
+                     '/api/profiles', '/api/ssh_config')
         if self.path in protected and not self._authorized():
             self._json(401, {'error': 'unauthorized'})
+            return
+
+        if self.path == '/api/ssh_config':
+            domain = get_domain() or '-'
+            services = {
+                'dropbear': service_active('dropbear'),
+                'ws_ssh': service_active('xxtlonline-ws-ssh'),
+                'ws_ovpn': service_active('xxtlonline-ws-ovpn'),
+            }
+            self._json(200, {'ok': True, 'domain': domain, 'services': services, 'ports': {
+                'dropbear_143': 143, 'dropbear_109': 109, 'openssh_22': 22,
+                'ssh_ws_8880': 8880, 'openvpn_ws_2086': 2086,
+            }})
             return
 
         if self.path == '/api/profiles':
@@ -1179,6 +1193,8 @@ class Handler(BaseHTTPRequestHandler):
             self._xui_update_client(data)
         elif self.path == '/api/xui/inbounds/delete_client':
             self._xui_delete_client(data)
+        elif self.path == '/api/ssh_config/restart':
+            self._ssh_config_restart(data)
         else:
             self._json(404, {'error': 'not found'})
 
@@ -1607,6 +1623,20 @@ server {{
             return
         self._json(200, {'ok': True})
 
+    def _ssh_config_restart(self, data):
+        svc = str(data.get('service', '')).strip()
+        allowed = {'dropbear': 'dropbear', 'ws_ssh': 'xxtlonline-ws-ssh', 'ws_ovpn': 'xxtlonline-ws-ovpn'}
+        unit = allowed.get(svc)
+        if not unit:
+            self._json(400, {'ok': False, 'error': 'service ต้องเป็น dropbear, ws_ssh หรือ ws_ovpn เท่านั้น'})
+            return
+        r = run(['systemctl', 'restart', unit], timeout=20)
+        active = service_active(unit)
+        if r.returncode != 0 or not active:
+            self._json(500, {'ok': False, 'error': f'restart {unit} ไม่สำเร็จ — เช็ค: journalctl -u {unit} -n 50'})
+            return
+        self._json(200, {'ok': True})
+
     def _xui_create_inbound(self, data):
         import uuid as uuidlib
 
@@ -1759,6 +1789,138 @@ chmod +x /opt/$BRAND_DIR-ssh-api/app.py
 ok "SSH API"
 echo ""
 
+# ============================================================
+#  SSH-WS / OpenVPN-WS bridge (สำหรับแอป SSH Websocket)
+#  รับ WebSocket handshake เข้ามาแล้วส่งข้อมูลต่อไปที่ Dropbear (143)
+#  เขียนด้วย stdlib ล้วน (asyncio) ไม่ต้องติดตั้งไลบรารีเพิ่ม
+#  หมายเหตุ: พอร์ต 2086 ยังชี้ไปที่ SSH/Dropbear เหมือนกัน เพราะ
+#  เซิร์ฟเวอร์นี้ไม่ได้ติดตั้ง OpenVPN server จริง — ถ้าต้องการ
+#  OpenVPN server จริงๆ ต้องแจ้งแยก เป็นงานติดตั้งเพิ่มอีกชุด
+# ============================================================
+info "ติดตั้ง SSH-WS / OpenVPN-WS bridge..."
+mkdir -p /opt/$BRAND_DIR-ssh-api
+cat > /opt/$BRAND_DIR-ssh-api/ws_bridge.py << 'WSBRIDGEEOF'
+#!/usr/bin/env python3
+"""Minimal WebSocket <-> TCP bridge (stdlib only) for SSH-over-WebSocket."""
+import asyncio, base64, hashlib, sys, re
+
+WS_MAGIC = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11'
+TARGET_HOST = '127.0.0.1'
+
+
+async def read_ws_frame(reader):
+    try:
+        b1, b2 = await reader.readexactly(2)
+    except (asyncio.IncompleteReadError, ConnectionError):
+        return None
+    opcode = b1 & 0x0F
+    masked = b2 & 0x80
+    length = b2 & 0x7F
+    if opcode == 0x8:
+        return None
+    try:
+        if length == 126:
+            length = int.from_bytes(await reader.readexactly(2), 'big')
+        elif length == 127:
+            length = int.from_bytes(await reader.readexactly(8), 'big')
+        mask = await reader.readexactly(4) if masked else None
+        payload = await reader.readexactly(length) if length else b''
+    except (asyncio.IncompleteReadError, ConnectionError):
+        return None
+    if masked and mask:
+        payload = bytes(b ^ mask[i % 4] for i, b in enumerate(payload))
+    if opcode in (0x1, 0x2):
+        return payload
+    return b''  # ping/pong/continuation: ignore payload, keep connection alive
+
+
+def make_ws_frame(data):
+    length = len(data)
+    if length <= 125:
+        header = bytes([0x82, length])
+    elif length <= 65535:
+        header = bytes([0x82, 126]) + length.to_bytes(2, 'big')
+    else:
+        header = bytes([0x82, 127]) + length.to_bytes(8, 'big')
+    return header + data
+
+
+async def handle(reader, writer, target_port):
+    try:
+        request = b''
+        while b'\r\n\r\n' not in request and len(request) < 8192:
+            chunk = await reader.read(4096)
+            if not chunk:
+                writer.close(); return
+            request += chunk
+        headers = request.decode('latin1', 'ignore')
+        m = re.search(r'Sec-WebSocket-Key:\s*(\S+)', headers, re.I)
+        if not m:
+            writer.write(b'HTTP/1.1 400 Bad Request\r\n\r\n')
+            await writer.drain(); writer.close(); return
+        key = m.group(1).strip()
+        accept = base64.b64encode(hashlib.sha1((key + WS_MAGIC).encode()).digest()).decode()
+        writer.write((
+            'HTTP/1.1 101 Switching Protocols\r\n'
+            'Upgrade: websocket\r\n'
+            'Connection: Upgrade\r\n'
+            f'Sec-WebSocket-Accept: {accept}\r\n\r\n'
+        ).encode())
+        await writer.drain()
+
+        try:
+            target_reader, target_writer = await asyncio.open_connection(TARGET_HOST, target_port)
+        except Exception:
+            writer.close(); return
+
+        async def ws_to_tcp():
+            while True:
+                frame = await read_ws_frame(reader)
+                if frame is None:
+                    break
+                if frame:
+                    target_writer.write(frame)
+                    await target_writer.drain()
+            target_writer.close()
+
+        async def tcp_to_ws():
+            while True:
+                try:
+                    data = await target_reader.read(4096)
+                except ConnectionError:
+                    break
+                if not data:
+                    break
+                writer.write(make_ws_frame(data))
+                await writer.drain()
+            writer.close()
+
+        await asyncio.gather(ws_to_tcp(), tcp_to_ws(), return_exceptions=True)
+    except Exception:
+        pass
+    finally:
+        try:
+            writer.close()
+        except Exception:
+            pass
+
+
+async def main():
+    listen_port = int(sys.argv[1]) if len(sys.argv) > 1 else 8880
+    target_port = int(sys.argv[2]) if len(sys.argv) > 2 else 143
+    server = await asyncio.start_server(lambda r, w: handle(r, w, target_port), '0.0.0.0', listen_port)
+    async with server:
+        await server.serve_forever()
+
+
+if __name__ == '__main__':
+    asyncio.run(main())
+WSBRIDGEEOF
+
+chmod +x /opt/$BRAND_DIR-ssh-api/ws_bridge.py
+ok "WS bridge script"
+echo ""
+
 # Create systemd service
 info "สร้าง systemd service..."
 cat > /etc/systemd/system/$BRAND_DIR-ssh-api.service << EOF
@@ -1778,10 +1940,46 @@ RestartSec=5
 WantedBy=multi-user.target
 EOF
 
+# SSH Websocket HTTP : 8880  -> forwards to Dropbear 143
+cat > /etc/systemd/system/$BRAND_DIR-ws-ssh.service << EOF
+[Unit]
+Description=XXTLONLINE SSH Websocket Bridge (8880 -> 143)
+After=network.target dropbear.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/$BRAND_DIR-ssh-api
+ExecStart=/usr/bin/python3 ws_bridge.py 8880 143
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Websocket OpenVPN : 2086 -> same SSH backend (ไม่มี OpenVPN server จริงติดตั้งไว้)
+cat > /etc/systemd/system/$BRAND_DIR-ws-ovpn.service << EOF
+[Unit]
+Description=XXTLONLINE OpenVPN-style Websocket Bridge (2086 -> 143)
+After=network.target dropbear.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/$BRAND_DIR-ssh-api
+ExecStart=/usr/bin/python3 ws_bridge.py 2086 143
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
 systemctl daemon-reload
-systemctl enable $BRAND_DIR-ssh-api
-systemctl start $BRAND_DIR-ssh-api
-ok "Systemd service"
+systemctl enable $BRAND_DIR-ssh-api $BRAND_DIR-ws-ssh $BRAND_DIR-ws-ovpn
+systemctl start $BRAND_DIR-ssh-api $BRAND_DIR-ws-ssh $BRAND_DIR-ws-ovpn
+ok "Systemd services (API + SSH-WS 8880 + OpenVPN-WS 2086)"
 echo ""
 
 # (Firewall เปิดไปแล้วก่อนขั้นตอน Nginx/SSL ด้านบน ไม่ต้องทำซ้ำ)
@@ -1795,7 +1993,7 @@ info "ตรวจสอบระบบทั้งหมดก่อนสร�
 echo ""
 
 declare -A SVC_STATUS
-for svc in nginx dropbear x-ui $BRAND_DIR-ssh-api; do
+for svc in nginx dropbear x-ui $BRAND_DIR-ssh-api $BRAND_DIR-ws-ssh $BRAND_DIR-ws-ovpn; do
   if systemctl is-active --quiet "$svc"; then
     SVC_STATUS[$svc]="OK"
   else
@@ -1877,6 +2075,11 @@ echo "   Username: $ADMIN_USER"
 echo ""
 echo -e "${CYAN}🔌 SSH:${NC}"
 echo "   ssh -p 143 <user>@$DOMAIN"
+echo ""
+echo -e "${CYAN}🌐 SSH Websocket:${NC}"
+echo "   Host: $DOMAIN | Port: 8880 (HTTP-WS) | Payload: ต่อไปที่ 127.0.0.1:143"
+echo -e "${CYAN}🌐 OpenVPN-style Websocket:${NC}"
+echo "   Host: $DOMAIN | Port: 2086 (ใช้ backend SSH เดียวกัน — ยังไม่มี OpenVPN server จริง)"
 echo ""
 echo -e "${GREEN}════════════════════════════════════════════════════${NC}"
 ok "ใช้ username/password เดียวกันเข้า Dashboard + 3x-ui"

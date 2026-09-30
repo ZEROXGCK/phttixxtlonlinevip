@@ -375,19 +375,77 @@
     }
   }
   
+  /* กันเนื้อหาดันหน้าให้เลื่อนซ้าย-ขวา ไม่ว่าจอขนาดไหน */
+  html, body { max-width: 100%; overflow-x: hidden; }
+  .stats-grid, .charts-grid, .inbound-form, .ssh-form, .cfg-actions,
+  .panel-card, .stat-card, .chart-card { min-width: 0; }
+  table { max-width: 100%; }
+  .table-scroll { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+  .mobile-topbar { display: none; }
+  .sidebar-backdrop { display: none; }
+
   @media (max-width: 768px) {
     .container {
       grid-template-columns: 1fr;
     }
-    
+
+    /* Sidebar กลายเป็น drawer เลื่อนเข้า-ออกได้ แทนที่จะหายไปเฉยๆ */
     .sidebar {
-      display: none;
+      transform: translateX(-100%);
+      transition: transform 0.25s ease;
+      z-index: 1000;
+      display: block;
+      box-shadow: 4px 0 24px rgba(0,0,0,.4);
     }
-    
+    .sidebar.open {
+      transform: translateX(0);
+    }
+
+    .sidebar-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.5);
+      z-index: 999;
+    }
+    .sidebar-backdrop.show { display: block; }
+
+    .mobile-topbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 500;
+    }
+    .mobile-topbar .hamburger {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+      font-size: 1.2rem;
+      width: 38px;
+      height: 38px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .mobile-topbar .mobile-brand {
+      font-family: 'Poppins', sans-serif;
+      font-weight: 700;
+      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
     .main {
       margin-left: 0;
       padding: 15px;
     }
+
+    .header { flex-wrap: wrap; gap: 8px; }
   }
   
   /* SSH Management + x-ui Quick Access */
@@ -586,9 +644,15 @@
 </head>
 <body>
 
+<div class="mobile-topbar">
+  <button class="hamburger" onclick="toggleSidebar()">☰</button>
+  <span class="mobile-brand">XXTLONLINE</span>
+</div>
+<div class="sidebar-backdrop" id="sidebarBackdrop" onclick="closeSidebar()"></div>
+
 <div class="container">
   <!-- Sidebar -->
-  <div class="sidebar">
+  <div class="sidebar" id="sidebarEl" onclick="if(window.innerWidth<=768 && event.target.closest('.menu-item')) closeSidebar()">
     <div class="sidebar-brand">XXTLONLINE</div>
     <ul class="sidebar-menu">
       <li class="menu-item active" onclick="showSection('dashboard')">
@@ -606,6 +670,10 @@
       <li class="menu-item" onclick="openApiSettings()">
         <span class="menu-icon">🔌</span>
         <span>API Settings</span>
+      </li>
+      <li class="menu-item" onclick="openSshConfig()">
+        <span class="menu-icon">🛰️</span>
+        <span>SSH Config</span>
       </li>
       <li class="menu-item" onclick="showSection('settings')">
         <span class="menu-icon">⚙️</span>
@@ -796,7 +864,8 @@
         <button onclick="createSshUser()" id="sshCreateBtn">+ สร้างบัญชี</button>
       </div>
 
-      <table class="ssh-table">
+      <div class="table-scroll">
+<table class="ssh-table">
         <thead>
           <tr><th>Username</th><th>หมดอายุ</th><th>สถานะ</th><th></th></tr>
         </thead>
@@ -804,6 +873,7 @@
           <tr><td colspan="3" class="ssh-empty">กำลังโหลด...</td></tr>
         </tbody>
       </table>
+      </div>
     </div>
 
     <!-- Saved Config Profiles -->
@@ -859,6 +929,8 @@
             <option value="143">143 (Dropbear)</option>
             <option value="109">109 (Dropbear)</option>
             <option value="22">22 (OpenSSH)</option>
+            <option value="8880">8880 (SSH Websocket)</option>
+            <option value="2086">2086 (OpenVPN Websocket)</option>
           </select>
         </div>
         <div><label>SNI (ถ้ามี)</label><input type="text" id="cfgSni" placeholder="เว้นว่างได้"></div>
@@ -893,7 +965,8 @@
         <button onclick="copyShareLink()">📋 คัดลอกลิงก์</button>
       </div>
 
-      <table class="ssh-table">
+      <div class="table-scroll">
+<table class="ssh-table">
         <thead>
           <tr><th>Remark</th><th>Protocol</th><th>Port</th><th>Clients</th><th></th></tr>
         </thead>
@@ -901,6 +974,7 @@
           <tr><td colspan="5" class="ssh-empty">กำลังโหลด...</td></tr>
         </tbody>
       </table>
+      </div>
     </div>
 
   </div>
@@ -1747,6 +1821,61 @@ async function testXuiApi(){
 function showSection(section){
   document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
   event.target.closest('.menu-item').classList.add('active');
+}
+
+// Mobile sidebar drawer
+function toggleSidebar(){
+  document.getElementById('sidebarEl').classList.toggle('open');
+  document.getElementById('sidebarBackdrop').classList.toggle('show');
+}
+function closeSidebar(){
+  document.getElementById('sidebarEl').classList.remove('open');
+  document.getElementById('sidebarBackdrop').classList.remove('show');
+}
+
+// SSH Config menu
+async function openSshConfig(){
+  if(event && event.target && event.target.closest('.menu-item')){
+    document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
+    event.target.closest('.menu-item').classList.add('active');
+  }
+  let d = { domain: '-', services: {}, ports: {} };
+  try {
+    const r = await authFetch('/api/ssh_config');
+    d = await r.json();
+  } catch(e){}
+  const badge = ok => ok ? '✅ ทำงานปกติ' : '⛔ ไม่ทำงาน';
+  const s = d.services || {};
+
+  openForm('🛰️ ตั้งค่า SSH Config', [
+    {type:'text-only', value:`<b>Domain:</b> ${escapeHtml(d.domain || '-')}`},
+    {type:'text-only', value:'<hr style="border:0;border-top:1px solid rgba(148,163,184,.2)"><b>Dropbear SSH</b> — port 143 / 109 (OpenSSH เดิม port 22)'},
+    {type:'text-only', value:`สถานะ: ${badge(s.dropbear)} <button class="xm-no" style="margin-left:8px;padding:5px 10px;border-radius:6px;border:0;color:#fff;cursor:pointer;font-size:12px" onclick="restartSshService('dropbear')">↻ Restart</button>`},
+    {type:'text-only', value:'<hr style="border:0;border-top:1px solid rgba(148,163,184,.2)"><b>SSH Websocket</b> — port 8880 (สำหรับแอป SSH-WS)'},
+    {type:'text-only', value:`สถานะ: ${badge(s.ws_ssh)} <button class="xm-no" style="margin-left:8px;padding:5px 10px;border-radius:6px;border:0;color:#fff;cursor:pointer;font-size:12px" onclick="restartSshService('ws_ssh')">↻ Restart</button>`},
+    {type:'text-only', value:'<hr style="border:0;border-top:1px solid rgba(148,163,184,.2)"><b>OpenVPN-style Websocket</b> — port 2086 (ใช้ backend SSH เดียวกัน ยังไม่มี OpenVPN server จริง)'},
+    {type:'text-only', value:`สถานะ: ${badge(s.ws_ovpn)} <button class="xm-no" style="margin-left:8px;padding:5px 10px;border-radius:6px;border:0;color:#fff;cursor:pointer;font-size:12px" onclick="restartSshService('ws_ovpn')">↻ Restart</button>`},
+    {type:'text-only', value:'<div id="sshCfgOut" style="font-size:12px;min-height:16px;margin-top:6px"></div>'},
+  ], 'ปิด', async () => null);
+}
+
+async function restartSshService(name){
+  const out = document.getElementById('sshCfgOut');
+  if(out){ out.style.color = '#94a3b8'; out.textContent = 'กำลัง restart...'; }
+  try {
+    const res = await authFetch('/api/ssh_config/restart', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ service: name })
+    });
+    const data = await res.json();
+    if(out){
+      out.style.color = data.ok ? '#6ee7b7' : '#fca5a5';
+      out.textContent = data.ok ? '✅ restart สำเร็จ' : ('⛔ ' + (data.error || 'ไม่สำเร็จ'));
+    }
+    if(data.ok) setTimeout(() => openSshConfig(), 800);
+  } catch(e){
+    if(out){ out.style.color = '#fca5a5'; out.textContent = '⛔ ' + e.message; }
+  }
 }
 
 // Init

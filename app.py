@@ -664,9 +664,23 @@ class Handler(BaseHTTPRequestHandler):
 
     # ---------------------------------------------------------------- GET
     def do_GET(self):
-        protected = ('/api/status', '/api/info', '/api/users', '/api/xui/inbounds', '/api/xui/config', '/api/profiles')
+        protected = ('/api/status', '/api/info', '/api/users', '/api/xui/inbounds', '/api/xui/config',
+                     '/api/profiles', '/api/ssh_config')
         if self.path in protected and not self._authorized():
             self._json(401, {'error': 'unauthorized'})
+            return
+
+        if self.path == '/api/ssh_config':
+            domain = get_domain() or '-'
+            services = {
+                'dropbear': service_active('dropbear'),
+                'ws_ssh': service_active('xxtlonline-ws-ssh'),
+                'ws_ovpn': service_active('xxtlonline-ws-ovpn'),
+            }
+            self._json(200, {'ok': True, 'domain': domain, 'services': services, 'ports': {
+                'dropbear_143': 143, 'dropbear_109': 109, 'openssh_22': 22,
+                'ssh_ws_8880': 8880, 'openvpn_ws_2086': 2086,
+            }})
             return
 
         if self.path == '/api/profiles':
@@ -812,6 +826,8 @@ class Handler(BaseHTTPRequestHandler):
             self._xui_update_client(data)
         elif self.path == '/api/xui/inbounds/delete_client':
             self._xui_delete_client(data)
+        elif self.path == '/api/ssh_config/restart':
+            self._ssh_config_restart(data)
         else:
             self._json(404, {'error': 'not found'})
 
@@ -1237,6 +1253,20 @@ server {{
             self._json(404, {'ok': False, 'error': 'ไม่พบผู้ใช้นี้'})
             return
         if not self._xui_save_inbound(inbound, settings):
+            return
+        self._json(200, {'ok': True})
+
+    def _ssh_config_restart(self, data):
+        svc = str(data.get('service', '')).strip()
+        allowed = {'dropbear': 'dropbear', 'ws_ssh': 'xxtlonline-ws-ssh', 'ws_ovpn': 'xxtlonline-ws-ovpn'}
+        unit = allowed.get(svc)
+        if not unit:
+            self._json(400, {'ok': False, 'error': 'service ต้องเป็น dropbear, ws_ssh หรือ ws_ovpn เท่านั้น'})
+            return
+        r = run(['systemctl', 'restart', unit], timeout=20)
+        active = service_active(unit)
+        if r.returncode != 0 or not active:
+            self._json(500, {'ok': False, 'error': f'restart {unit} ไม่สำเร็จ — เช็ค: journalctl -u {unit} -n 50'})
             return
         self._json(200, {'ok': True})
 
